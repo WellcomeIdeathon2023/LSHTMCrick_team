@@ -1,0 +1,28 @@
+- title: Default
+  description: of cytokine measurements are on a linear (additive) scale
+  categories: [Euclidean-distance, all-features, linear, raw]
+  params:
+    column_distance:  euclidean
+    sample_subset: true
+    assay: raw
+- title: Log
+  description: of cytokine measurements are on a log (multiplicative) scale
+  categories: [Euclidean-distance, all-features, log, raw]
+  params:
+    column_distance:  euclidean
+    sample_subset: true
+    assay: log
+- title: Standardised
+  description: of standardised cytokine measurements are on a linear (additive) scale
+  categories: [Euclidean-distance, all-features, linear, standardised]
+  params:
+    column_distance:  euclidean
+    sample_subset: true
+    assay: standardised
+- title: Log-standardised
+  description: of cytokine measurements are on a standardised log (multiplicative) scale
+  categories: [Euclidean-distance, all-features, log, standardised]
+  params:
+    column_distance:  euclidean
+    sample_subset: true
+    assay: standardised-log
