@@ -33,7 +33,13 @@ df_neut_3 <- df_neut_2 %>% mutate(value_reported =
         value_reported != "<0.3 "~ as.character(value_reported)) ) %>%
     mutate(value_reported = as.numeric(value_reported))
 
-df_sero <- bind_rows(df_hai, df_neut_3)
+ df_hai <- df_hai %>% mutate(value_preferred =
+    case_when(
+        value_preferred == 9.99 ~ 5,
+        value_preferred != 9.99~ as.numeric(value_preferred)) ) 
+
+df_sero <- bind_rows(df_hai %>% mutate(assay = "HAI"), df_neut_3  %>% mutate(assay = "Neut"))
+
 
 # Create a data model
 dm_full <- dm(df_sero, df_gene, df_bead, df_sub, df_meta)

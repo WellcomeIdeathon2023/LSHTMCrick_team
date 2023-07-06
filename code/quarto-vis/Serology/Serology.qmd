@@ -1,0 +1,173 @@
+---
+title: Serology
+description: Visualisation of
+author: 
+  - name: David Hodgson
+    affiliations: BABS - Francis Crick Institute
+format:
+  html:
+    theme: cerulean
+    fontsize: 1.1em
+    linestretch: 1.7
+code-fold: true
+echo: false
+code-summary: "Show the code"
+categories: [Serology]
+server: shiny
+params:
+  row_distance: euclidean
+  nclust:  4
+  clustering_method_columns: ward.D2
+  subject_vars: [SUBJECT_ACCESSION, STUDY_TIME_COLLECTED, testing]
+  value_vars: CONCENTRATION_VALUE_PREFERRED
+  names_from: ANALYTE_PREFERRED
+  input_file_180: data/model_data/SDY180/sero_edit.csv
+  input_file_296: data/model_data/SDY296/sero_edit.csv
+  input_file_301: data/model_data/SDY301/sero_edit.csv
+
+---
+
+```{r}
+#| context: setup
+#| label: dependencies
+#| results: 'hide'
+#| echo: false
+#| message: false
+
+library(tidyverse)
+library(Hmisc)
+library(emmeans)
+library(ragg)
+library(SummarizedExperiment)
+library(ComplexHeatmap)
+library(gt)
+library(nlme)
+library(openxlsx)
+library(factoextra)
+library(gridExtra)
+library(here)
+library(shiny)
+library(patchwork)
+
+```
+
+
+```{r}
+#| context: setup
+#| label: load
+#| results: 'hide'
+#| echo: false
+#| message: false
+#| 
+quarto_path <- here::here("code", "quarto-vis")
+
+# Add R files to source here
+source(here::here(quarto_path, "R", "markdown.r"), local = knitr::knit_global())
+source(here::here(quarto_path, "R", "helper_sero.r"), local = knitr::knit_global())
+
+# function to help with captioning
+fig_caption_1 <- captioner()
+set.seed(1)
+
+# set some options for the quarto
+knitr::opts_chunk$set(warning=FALSE, error=FALSE, message=FALSE,
+                      dev=c("ragg_png","pdf"), out.width="100%",
+                      fig.width=14, fig.height=10,
+                      results='asis')
+                      
+link2path <- function(lname) {  file.path(knitr::opts_knit$get("output.dir"),lname) }
+
+```
+
+
+
+```{r}
+#| context: setup
+#| label: load2
+
+
+# load the parameters stated at top of document
+params_meta <- load_params(here::here(quarto_path, "Serology", "Serology"), extra=TRUE)
+
+counter <- (function(maxlen=3) {
+  n <- 0
+  function() {
+    n <<- n+1
+    sprintf(paste0("%0.", maxlen, "i"), n)
+  }
+})()
+
+# how tod deal with this
+sero_SDY180 <- read.csv(file = here::here(params_meta$input_file_180))
+sero_SDY180_p <- sero_SDY180 %>% filter(grepl("pneumoniae", virus_strain_reported))
+
+sero_SDY180 <- sero_SDY180 %>% filter(!grepl("pneumoniae", virus_strain_reported)) %>%
+  mutate(value_log2 =   log2(value_preferred/5)) %>%
+  summarise(value_log2 = median(value_log2), 
+    .by = c(arm_accession:experiment_accession, study_accession:unit_preferred, virus_strain_preferred:species))
+    
+
+sero_SDY296 <- read.csv(file = here::here(params_meta$input_file_296))
+sero_SDY296 <- sero_SDY296 %>% mutate(value_log2 = log2(value_preferred/5))
+SDY296_id <- sero_SDY296 %>% pull(result_id)
+
+sero_SDY301 <- read.csv(file = here::here(params_meta$input_file_301))
+sero_SDY301 <- sero_SDY301 %>% mutate(value_log2 = log2(value_preferred/5)) %>% 
+  summarise(value_log2 = median(value_log2), .by = c(arm_accession:experiment_accession, study_accession:unit_preferred, virus_strain_preferred:species))
+
+```
+
+
+## Post-vaccine antibody kinetics
+
+:::{.panel-tabset}
+### Influenza
+
+```{r}
+#| panel: sidebar
+selectInput('study', 'Study', study )
+selectInput('covar', 'Metadata covariate', vars)
+
+```
+
+:::{.panel-tabset}
+### HAI titres
+```{r}
+#| panel: fill
+plotOutput('plot1')
+
+```
+
+### Neutralisation titres
+
+```{r}
+#| panel: fill
+plotOutput('plot2')
+
+```
+
+:::
+
+### Pneumo
+
+```{r}
+#| panel: sidebar
+selectInput('covar2', 'Metadata covariate', vars)
+
+```
+```{r}
+#| panel: fill
+plotOutput('plot3')
+
+```
+
+
+```{r}
+#| context: server
+output$plot1 <- create_plot_flu("HAI", input, "covar", sero_SDY180, sero_SDY296, sero_SDY301)
+output$plot2 <- create_plot_flu("Neut", input, "covar", sero_SDY180, sero_SDY296, sero_SDY301)
+output$plot3 <- create_plot_pneumo(input, "covar2", sero_SDY180_p)
+
+```
+
+:::

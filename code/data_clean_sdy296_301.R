@@ -23,7 +23,8 @@ df_meta <- read.csv(here::here("data", "datasets", study_name, paste0(study_name
 #df_gene_deet <- read.table(here::here("data", "datasets", study_name, "ResultFiles", "Gene_expression_result", "Nanostring_norm_data_DS10_ESIDs_SDY296.587721.txt"), sep = "\t", header = TRUE) %>% clean_names
 
 # combine the two hai and the neuts
-df_sero <- bind_rows(df_hai, df_neut)
+
+df_sero <- bind_rows(df_hai %>% mutate(assay = "HAI"), df_neut  %>% mutate(assay = "Neut"))
 
 # Create a data model
 dm_full <- dm(df_sero, df_gene, df_rna, df_bead, df_sub, df_meta)

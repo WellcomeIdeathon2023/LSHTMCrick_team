@@ -17,6 +17,7 @@ param_names=res_dir VERSION TAG staging_dir
 ################################################################
 
 sections=Heatmap
+sections=Serology
 
 
 ################################################################
