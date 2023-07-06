@@ -8,8 +8,8 @@ EXECUTOR=singularity
 EXEC=bash
 DOCKER = gavinpaulkelly/verse-boost
 
-staging_dir=staging-${project}
 source_dir=resources
+staging_dir=staging-${project}
 RESULTS_DIR = results-${project}
 res_dir = $(RESULTS_DIR)/$(VERSION)
 publish_intranet=www_internal
@@ -25,6 +25,28 @@ VERSION := $(shell $(GIT) describe --tags --abbrev=0 2>/dev/null || echo "vX.Y.Z
 git-ignore=touch .gitignore && grep -qxF '$(1)' .gitignore || echo '$(1)' >> .gitignore
 
 make_rwx = setfacl -m u::rwx
+
+################################################################
+## SLURM
+## 
+## Have default but customisable slurm parameters 
+################################################################
+
+SLURM--time=0-02:00:00
+SLURM--mem=64G
+SLURM--cpus-per-task=8
+SLURM--partition=cpu
+
+define slurm
+#! /usr/bin/bash
+#SBATCH --partition=$(SLURM--partition)
+#SBATCH --time='$(SLURM--time)'
+#SBATCH --cpus-per-task=$(SLURM--cpus-per-task)
+#SBATCH --mem=$(SLURM--mem)
+#SBATCH --job-name=$(notdir $(CURDIR))
+#SBATCH --output=slurm-%x-%A_%a.out
+endef
+export slurm
 
 ################################################################
 ## Wrappers

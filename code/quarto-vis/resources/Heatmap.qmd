@@ -94,6 +94,7 @@ counter <- (function(maxlen=3) {
 meta_to_plot <- as.formula(params$plot_formula)
 #dat <- read_my_files(params)
 dat <- read_long_data(params, input_file=here::here(params$input_file))
+dat <- read_extra(dat, params, here=here())
 msg <- metadata(dat)$warnings
 
 mcols(colData(dat)) <- data.frame(PCA=FALSE)

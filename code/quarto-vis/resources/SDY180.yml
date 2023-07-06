@@ -4,5 +4,19 @@ names_from: ANALYTE_PREFERRED
 input_file: data/datasets/SDY180/ResultFiles/mbaa_result.csv
 VERSION: template
 TAG: _unknown
-plot_formula:  '~SUBJECT_ACCESSION + STUDY_TIME_COLLECTED'
+plot_formula:  '~SUBJECT_ACCESSION + STUDY_TIME_COLLECTED + ETHNICITY + RACE + GENDER + ARM_ACCESSION + MAX_SUBJECT_AGE'
 impute: third-of-min-feature
+files:
+  -
+    file: data/datasets/SDY180/SDY180-DR47_Tab/subject.csv
+    type: subject
+    key: SUBJECT_ACCESSION
+    retain: [ETHNICITY,GENDER,RACE]
+  -
+    file: data/datasets/SDY180/SDY180-DR47_Tab/arm_2_subject.csv
+    type: arm
+    key: SUBJECT_ACCESSION
+    retain: [ARM_ACCESSION,MAX_SUBJECT_AGE]
+    
+    
+

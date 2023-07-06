@@ -18,25 +18,3 @@ param_names=res_dir VERSION TAG staging_dir
 
 sections=Heatmap
 
-
-################################################################
-## SLURM
-## 
-## Have default but customisable slurm parameters 
-################################################################
-
-SLURM--time=0-02:00:00
-SLURM--mem=64G
-SLURM--cpus-per-task=8
-SLURM--partition=cpu
-
-define slurm
-#! /usr/bin/bash
-#SBATCH --partition=$(SLURM--partition)
-#SBATCH --time='$(SLURM--time)'
-#SBATCH --cpus-per-task=$(SLURM--cpus-per-task)
-#SBATCH --mem=$(SLURM--mem)
-#SBATCH --job-name=$(notdir $(CURDIR))
-#SBATCH --output=slurm-%x-%A_%a.out
-endef
-export slurm

@@ -82,3 +82,17 @@ read_long_data <- function(params, input_file) {
   dat
 
   }
+
+read_extra <- function(dat, params, here) {
+  df <- as.data.frame(colData(dat))
+  ind <- row.names(df)
+  for (extra in params$files) {
+    add_df <- vroom::vroom(file.path(here, extra$file)) %>%
+        select(all_of(c(extra$key, extra$retain)))
+    df <- left_join(add_df, df, by=extra$key)
+  }
+  colData(dat) <- df[ind,]
+  dat
+}
+    
+    
