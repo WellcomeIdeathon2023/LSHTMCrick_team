@@ -85,13 +85,17 @@ read_long_data <- function(params, input_file) {
 
 read_extra <- function(dat, params, here) {
   df <- as.data.frame(colData(dat))
+  rn <- row.names(df)
+  df$.rname <- rn
   ind <- row.names(df)
   for (extra in params$files) {
     add_df <- vroom::vroom(file.path(here, extra$file)) %>%
         select(all_of(c(extra$key, extra$retain)))
-    df <- left_join(add_df, df, by=extra$key)
+    df <- base::merge(df, add_df, by=extra$key, all.x=TRUE, all.y=FALSE)
   }
-  colData(dat) <- df[ind,]
+  row.names(df) <- df$.rname
+  df$.rname <- NULL
+  colData(dat) <- DataFrame(as.data.frame(df[rn,]))
   dat
 }
     
