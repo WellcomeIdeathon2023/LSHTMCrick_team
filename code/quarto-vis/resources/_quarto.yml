@@ -5,7 +5,7 @@ website:
   title: "Analysis results"
   navbar:
     right:
-      - href: https://github.com/BABS-STP/
+      - href: https://github.com/WellcomeIdeathon2023/LSHTMCrick_team
         text: Github repository
         icon: github
   sidebar:

@@ -15,7 +15,6 @@ code-summary: "Show the code"
 categories: [Heatmap]
 params:
   row_distance: euclidean
-  nclust:  4
   clustering_method_columns: ward.D2
   subject_vars: [SUBJECT_ACCESSION, STUDY_TIME_COLLECTED]
   value_vars: CONCENTRATION_VALUE_PREFERRED
@@ -204,6 +203,11 @@ calibration with each other). We'll explore both those possibilities
   
 aname <-  params$assay
 
+if (is.character(params$column_split)) {
+  column_split <- as.formula(paste("~", params$column_split))
+} else {
+  column_split <- params$column_split
+}
 hmap <- se_heatmap(dat,
                   assay=aname,
                   model=meta_to_plot,
@@ -214,7 +218,7 @@ hmap <- se_heatmap(dat,
                   show_column_names=FALSE,
                   layer_fun=function(...) grid.rect(gp = gpar(lwd = 2, fill = "transparent")),
                   clustering_method_columns=params$clustering_method_columns,
-                  column_split = params$nclust)
+                  column_split = column_split)
 fig_caption("Entirely unsupervised, absolute with no normalisation")
 
 
@@ -381,7 +385,7 @@ hmap <- se_heatmap(dat,
                   show_column_names=FALSE,
                   max_legend_levels=5,
                   layer_fun=function(...) grid.rect(gp = gpar(lwd = 2, fill = "transparent")),
-                  column_split = params$nclust)
+                  column_split = column_split)
 
 fig_caption("Entirely unsupervised, relative with no normalisation")
 
