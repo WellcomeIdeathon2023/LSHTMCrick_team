@@ -1,0 +1,230 @@
+---
+title: PCA
+description: Principal components analysis
+author: 
+  - name: Gavin Kelly
+    affiliations: BABS - Francis Crick Institute
+format:
+  html:
+    theme: cerulean
+    fontsize: 1.1em
+    linestretch: 1.7
+code-fold: true
+echo: false
+code-summary: "Show the code"
+categories: [PCA]
+params:
+  row_distance: euclidean
+  clustering_method_columns: ward.D2
+  subject_vars: [SUBJECT_ACCESSION, STUDY_TIME_COLLECTED]
+  value_vars: CONCENTRATION_VALUE_PREFERRED
+  names_from: ANALYTE_PREFERRED
+  input_file: data/datasets/SDY180/ResultFiles/mbaa_result.csv
+---
+  
+
+# Introduction
+
+Load the data into a SummarizedExperiment which contains a matrix with
+row and column annotation frames.
+
+
+```{r}
+#| label: intro
+#| results: 'hide'
+#| echo: false
+#| message: false
+
+library(tidyverse)
+library(Hmisc)
+library(emmeans)
+library(ragg)
+library(SummarizedExperiment)
+library(ComplexHeatmap)
+library(gt)
+library(nlme)
+library(openxlsx)
+library(factoextra)
+library(gridExtra)
+library(compositions)
+library(here)
+```
+
+We're using the following settings:
+
+```{r}
+#| label: load
+source("R/markdown.r", local = knitr::knit_global())
+source("R/transforms.r", local = knitr::knit_global())
+source("R/plot.r", local = knitr::knit_global())
+source("R/output.r", local = knitr::knit_global())
+source("R/input.r", local = knitr::knit_global())
+fig_caption <- captioner()
+set.seed(1)
+
+knitr::opts_chunk$set(warning=FALSE, error=FALSE, message=FALSE,
+                      dev=c("ragg_png","pdf"), out.width="100%",
+                      fig.width=14, fig.height=10,
+                      results='asis', fig.cap=expression(fig_caption())
+                      )
+```
+
+
+```{r}
+#| label: load2
+if (!isTRUE(getOption('knitr.in.progress'))) {
+  params <- load_params("resources/PCA", extra=TRUE)
+} else {
+  gt(data.frame(Setting=names(params),
+                Value=unlist(lapply(params, toString))))
+}
+
+#dat <- read_my_files(params)
+dat <- read_long_data(params, input_file=here::here(params$input_file))
+dat <- read_extra(dat, params, here=here())
+msg <- metadata(dat)$warnings
+
+
+mcols(colData(dat)) <- data.frame(PCA=FALSE)
+mcols(mcols(dat)) <- data.frame(PCA=FALSE)
+
+metadata(colData(dat))$palette <- df2colorspace(colData(dat), "Set1")
+metadata(rowData(dat))$palette <- df2colorspace(rowData(dat), "Set1")
+
+col_legends <- lapply(
+  names(metadata(colData(dat))$palette$Heatmap),
+  function(md_name) {
+    md <- metadata(colData(dat))$palette$Heatmap[[md_name]]
+    if (is.function(md))
+      Legend(col_fun=md, title=md_name)@grob
+    else
+      Legend(legend_gp=gpar(fill=md),labels=names(md), title=md_name)@grob
+  }
+)
+sane_legends <- col_legends[]
+tmp <- do.call(grid.arrange, c(sane_legends, ncol=ceiling(sqrt(length(sane_legends)))))
+fig_caption("Sample metadata colour-codings")
+
+row_legends <- lapply(
+  names(metadata(rowData(dat))$palette$Heatmap),
+  function(md_name) {
+    md <- metadata(rowData(dat))$palette$Heatmap[[md_name]]
+    if (is.function(md))
+      Legend(row_fun=md, title=md_name)@grob
+    else
+      Legend(legend_gp=gpar(fill=md),labels=names(md), title=md_name)@grob
+  }
+)
+sane_legends <- row_legends
+tmp <- do.call(grid.arrange, c(sane_legends, ncol=ceiling(sqrt(length(sane_legends)))))
+fig_caption("Feature metadata colour-codings")
+
+
+
+
+```
+
+`r msg`
+
+```{r}
+#| label: standardise
+
+if ("impute" %in% names(params)) {
+  assay(dat, "raw") <- impute_se(assay(dat,"raw"), params$"impute")
+}
+
+assay(dat, "standardised") <- t(scale(t(assay(dat, "raw")), center=TRUE, scale=TRUE))
+metadata(dat)$assay$standardised <- "Standardised"
+
+assay(dat, "log") <- log0_third(assay(dat, "raw"))
+metadata(dat)$assay$standardised <- "Log"
+
+assay(dat, "standardised-log") <- t(scale(t(assay(dat, "log")), center=TRUE, scale=TRUE))
+metadata(dat)$assay$standardised <- "Standardised Log"
+
+for (i in assayNames(dat)) {
+  dat <- add_dim_reduct(dat, assay=i)
+}
+
+
+```
+
+# Descriptive and visual summaries
+
+PCA projects the data onto single-number summaries that start with the
+most informative single number in PC1 and add the most
+useful complementary dimensions consecutively.
+
+```{r}
+#| label: pca1
+#| output: asis
+
+ind <- which(names(colData(dat))==paste0(params$assay, ".PCA"))
+pca <- data.frame(cbind(colData(dat)[!mcols(colData(dat))$PCA], colData(dat)[, ind]), check.names=FALSE)
+
+ojs_define(pca=pca)
+ojs_define(colourBys=names(colData(dat))[!mcols(colData(dat))$PCA])
+ojs_define(PCBys=names(colData(dat)[[ind]]))
+
+mat <- data.frame(cbind(colData(dat)[!mcols(colData(dat))$PCA], data.frame(t(assay(dat, params$assay)), check.names=FALSE)), check.names=FALSE)
+ojs_define(mat=mat)
+ojs_define(features=row.names(dat))
+
+cols <- metadata(colData(dat))$palette$ggplot
+is_factor <- sapply(cols, function(x) !is.null(names(x)))
+js_cols <- mapply(
+  function(rgb, is_fac, cdat) {list(
+    domain=if (is_fac) names(rgb) else range(cdat, na.rm=TRUE),
+    range=rgb,
+    type=ifelse(is_fac,"categorical", "linear"))},
+  cols,
+  is_factor,
+  data.frame(colData(dat)[names(cols)]),
+  SIMPLIFY=FALSE)
+ojs_define(colscale_list=js_cols)
+
+```
+
+```{ojs}
+viewof mycolor = Inputs.select(colourBys, {value: "region", label: "Colour By:"})
+viewof myx = Inputs.select(PCBys, {value: "PC1", label: "Horizontal PC:"})
+viewof myy = Inputs.select(PCBys, {value: "PC2", label: "Vertical PC:"})
+
+Plot.dot(
+    transpose(pca),
+    {x: d => d[myx], y: d => d[myy], stroke: d => d[mycolor], fill: d => d[mycolor]}
+  ).plot({
+    color: {type: colscale_list[mycolor].type,
+          domain: colscale_list[mycolor].domain,
+		  range:  colscale_list[mycolor].range
+		  },
+    x: {label: myx},
+	y: {label: myy}
+  }
+)
+
+```
+
+```{ojs}
+viewof myxfeat = Inputs.select(features, {label: "Horizontal Feature:"})
+viewof myyfeat = Inputs.select(features, {label: "Vertical Feature:"})
+Plot.dot(
+  transpose(mat),
+      {x: d => d[myxfeat], y: d => d[myyfeat], stroke: d => d[mycolor], fill: d => d[mycolor]}
+	  ).plot({
+    color: {type: colscale_list[mycolor].type,
+          domain: colscale_list[mycolor].domain,
+		  range:  colscale_list[mycolor].range
+		  },
+    x: {label: myx},
+	y: {label: myy}
+  })
+```
+
+
+# Terms Of Use
+
+
+# Bibliography
+
+

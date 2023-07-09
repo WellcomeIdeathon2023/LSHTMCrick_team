@@ -16,5 +16,5 @@ param_names=res_dir VERSION TAG staging_dir
 ## (`./resources` by default) after one one of these
 ################################################################
 
-sections=Heatmap
+sections=Heatmap PCA
 
