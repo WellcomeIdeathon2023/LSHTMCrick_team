@@ -18,7 +18,7 @@ files:
       type: arm
       key: SUBJECT_ACCESSION
       retain: [ARM_ACCESSION,MAX_SUBJECT_AGE]
-column_split: SUBJECT_ACCESSION
+column_split: 4
     
     
 

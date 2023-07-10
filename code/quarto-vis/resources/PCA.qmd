@@ -221,6 +221,51 @@ Plot.dot(
   })
 ```
 
+## Principal Cytokine:Covariate association
+
+
+```{r}
+#| label: pcacovar
+#| output: asis
+
+pc <- data.frame(colData(dat)[, names(colData(dat))==paste0(params$assay, ".PCA")], check.names=FALSE)
+fitFrame <- colData(dat)
+yvar <- make.unique(c(colnames(fitFrame), "y", sep = ""))[ncol(fitFrame) + 1]
+fml <- update( ~ GENDER + RACE + MAX_SUBJECT_AGE + STUDY_TIME_COLLECTED + ARM_ACCESSION,
+              paste(yvar, "~ ."))
+plotFrame <- expand.grid(
+  Covariate = attr(terms(fml), "term.labels"),
+  PC = 1:ncol(pc))
+plotFrame$Assoc <- NA
+npc <- ncol(pc)
+fit_selected <- list()
+for (ipc in 1:npc) {
+  fitFrame[[yvar]] <- pc[, ipc]
+  fit1 <- lm(fml, data = fitFrame)
+  fit_selected[[ipc]] <- MASS::stepAIC(fit1, trace = 0)
+  ind <- attr(terms(fit_selected[[ipc]]), "term.labels")
+  if (length(ind)) {
+    fit0 <- as.data.frame(anova(fit_selected[[ipc]]))
+    rss <- fit0[ind, "Sum Sq"]/sum(fit0[, "Sum Sq"])
+    ind_pc <- plotFrame$PC == ipc
+    ind_fit <- match(ind, plotFrame$Covariate[ind_pc])
+    plotFrame$Assoc[ind_pc][ind_fit] <- rss
+  }
+}
+plotFrame$wrap <- (plotFrame$PC - 1)%/%20
+plotFrame$wrap <- paste0("PCs ", plotFrame$wrap * 20 +
+                                   1, "-", min((plotFrame$wrap + 1) * 20, npc))
+plotFrame$PC <- sprintf("%02d", plotFrame$PC)
+pl <- ggplot(plotFrame, aes(x = PC, y = Covariate, fill = Assoc)) +
+  geom_raster() +
+  facet_wrap(~wrap, scales = "free_x",ncol = 1) +
+  scale_fill_gradient2(low = "#4575b4",mid = "grey90", high = "#d73027") +
+  theme_bw() +
+  theme(aspect.ratio = length(unique(plotFrame$Covariate))/min(20, npc))
+print(pl)
+fig_caption("Metadata association with PCs")
+  
+```
 
 # Terms Of Use
 

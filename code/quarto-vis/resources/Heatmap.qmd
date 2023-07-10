@@ -293,6 +293,18 @@ sort_clusts <- function(clustList) {
   }
 }
 sub_clusts <- sort_clusts(column_order(hmap))
+clust_id <- rep(NA, nrow(dat))
+for (i in names(sub_clusts)) {
+  clust_id[sub_clusts[[i]]] <- i
+}
+tmp <- table(clust_id, dat$SUBJECT_ACCESSION)
+subject_cluster <- apply(tmp, 2, which.max)
+subject_frame <- data.frame(SUBJECT_ACCESSION=names(subject_cluster),
+                            cytokine_cluster=unname(subject_cluster)
+                            )
+#write_csv(subject_frame,
+#            file="cytokine_clusters.csv")
+
 
 cluster_to_col <- function(se, sub_clusts) {
   df <- cbind(ID=colnames(se), cluster="", colData(se)[!mcols(colData(se))$PCA])
