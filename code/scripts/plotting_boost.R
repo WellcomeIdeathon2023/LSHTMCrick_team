@@ -254,12 +254,12 @@ p_gtr_cluster <- ggplot() +
   theme_minimal()
 
 ggsave("results/covariate_level/boost_cluster_fits.pdf",
-       p_clusters,
+       p_gtr_cluster,
        width = 8,
        height = 8)
 
 ggsave("results/covariate_level/boost_cluster_fits.png",
-       p_clusters,
+       p_gtr_cluster,
        width = 8,
        height = 8,
        bg = "white")
