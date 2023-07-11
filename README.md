@@ -1,23 +1,8 @@
-# README
-
-# This is your private repository for working on the challenges in the Wellcome Data Science Ideathon.
-# This repository is maintained and monitored by Wellcome staff and will be made public after July 13 2023.
-# Feel free to create additional folders in this repository but please use the existing ones as follows:
-# * `data` - Any data that is loaded from your scripts (excluding data scraped/downloaded from the web) should be uploaded to this folder. Simulated data should be reproducible.
-# * `code` - All code used as part of your solution should be uploaded this folder and is expected to be reproducible.
-# * `results` - Final results, including presented slides and other content, should be uploaded to this folder.
-
 VizImmune: a platform for visualising in-host immune kinetics.
 
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-
-<!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://github.com/WellcomeIdeathon2023/LSHTMCrick_team/tree/main/results/vizimmune_screenshot.png)
+![plot](https://github.com/WellcomeIdeathon2023/LSHTMCrick_team/tree/main/results/vizimmune_screenshot.png)
 
 VizImmune: an open-source platform to harness the scientific public health potential of immunological biomarker data. Immunological biomarkers are measurable indicators of the immune system’s response to various diseases, infections and vaccination. By systematically collecting and analysing these data, public health officials can gain a deeper understanding of the epidemiology of infectious diseases on the individual and population level in several ways:
 
