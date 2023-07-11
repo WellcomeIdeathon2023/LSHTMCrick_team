@@ -55,10 +55,13 @@ Don't forget to give the project a star! Thanks again!
 
 Get in contact with any one of the four authors of the platform with any questions
 
-David Hogson - david.hodgson@lshtm.ac.uk
-Timothy Russell - timothy.russell@lshtm.ac.uk
-Gavin Kelly - gavin.kelly@crick.ac.uk
-Elizabeth Williamson - elizabeth.williamson@lshtm.ac.uk
+* David Hogson - david.hodgson@lshtm.ac.uk
+
+* Timothy Russell - timothy.russell@lshtm.ac.uk
+
+* Gavin Kelly - gavin.kelly@crick.ac.uk
+
+* Elizabeth Williamson - elizabeth.williamson@lshtm.ac.uk
 
 Project Link: [https://github.com/your_username/repo_name](https://github.com/your_username/repo_name)
 
