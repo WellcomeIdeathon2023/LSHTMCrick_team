@@ -2,8 +2,7 @@
 title: PCA
 description: Principal components analysis
 author: 
-  - name: Gavin Kelly
-    affiliations: BABS - Francis Crick Institute
+  - name: LSHTM-Crick team
 format:
   html:
     theme: cerulean

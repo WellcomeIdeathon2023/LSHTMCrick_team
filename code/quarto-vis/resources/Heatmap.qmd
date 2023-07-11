@@ -2,8 +2,7 @@
 title: Heatmap
 description: Visualisation of
 author: 
-  - name: Gavin Kelly
-    affiliations: BABS - Francis Crick Institute
+  - name: LSHTM-Crick team
 format:
   html:
     theme: cerulean
