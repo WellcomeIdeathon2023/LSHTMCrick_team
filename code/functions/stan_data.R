@@ -55,7 +55,7 @@ get_stan_data <- function(dt_stan) {
 
 run_stan_model <- function(stan_data) {
 
-  mod <- cmdstanr::cmdstan_model("stan/boost_model.stan")
+  mod <- cmdstanr::cmdstan_model("code/stan/boost_model.stan")
 
   res <- mod$sample(data = stan_data,
                     chains = 4,
