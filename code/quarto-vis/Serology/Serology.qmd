@@ -48,7 +48,7 @@ library(gridExtra)
 library(here)
 library(shiny)
 library(patchwork)
-
+library(png)
 ```
 
 
@@ -171,3 +171,11 @@ output$plot3 <- create_plot_pneumo(input, "covar2", sero_SDY180_p)
 ```
 
 :::
+
+## Bayesian hierarchical antibody kinetic model fits
+```{r}
+
+img <- readPNG(here("results/covariate_level/boost_cluster_fits.png"))
+grid::grid.raster(img)
+
+```
