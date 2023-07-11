@@ -69,7 +69,7 @@ se_heatmap <- function(se, assay=assayNames(se)[1],
     col=sym_colour(plotDat, clip=colour_clip),
     name=name,
     row_title=row_title,
-    column_title=column_title,
+#    column_title=column_title,
     column_split=column_split,
     heatmap_legend_param = list(direction = "horizontal" ),
     top_annotation=ComplexHeatmap::HeatmapAnnotation(
