@@ -1,0 +1,490 @@
+---
+title: Heatmap
+description: Visualisation of
+author: 
+  - name: LSHTM-Crick team
+format:
+  html:
+    theme: cerulean
+    fontsize: 1.1em
+    linestretch: 1.7
+code-fold: true
+echo: false
+code-summary: "Show the code"
+categories: [Heatmap]
+params:
+  row_distance: euclidean
+  clustering_method_columns: ward.D2
+  subject_vars: [SUBJECT_ACCESSION, STUDY_TIME_COLLECTED]
+  value_vars: CONCENTRATION_VALUE_PREFERRED
+  names_from: ANALYTE_PREFERRED
+  input_file: data/datasets/SDY180/ResultFiles/mbaa_result.csv
+
+---
+  
+
+# Introduction
+
+Load the data into a SummarizedExperiment which contains a matrix with
+row and column annotation frames.
+
+
+```{r}
+#| label: intro
+#| results: 'hide'
+#| echo: false
+#| message: false
+
+library(tidyverse)
+library(Hmisc)
+library(emmeans)
+library(ragg)
+library(SummarizedExperiment)
+library(ComplexHeatmap)
+library(gt)
+library(nlme)
+library(openxlsx)
+library(factoextra)
+library(gridExtra)
+library(here)
+
+```
+
+We're using the following settings:
+
+```{r}
+#| label: load
+source("R/markdown.r", local = knitr::knit_global())
+source("R/transforms.r", local = knitr::knit_global())
+source("R/plot.r", local = knitr::knit_global())
+source("R/output.r", local = knitr::knit_global())
+source("R/input.r", local = knitr::knit_global())
+fig_caption <- captioner()
+set.seed(1)
+
+knitr::opts_chunk$set(warning=FALSE, error=FALSE, message=FALSE,
+                      dev=c("ragg_png","pdf"), out.width="100%",
+                      fig.width=14, fig.height=10,
+                      results='asis', fig.cap=expression(fig_caption())
+                      )
+link2path <- function(lname) {  file.path(knitr::opts_knit$get("output.dir"),lname) }
+
+```
+
+
+```{r}
+#| label: load2
+if (!isTRUE(getOption('knitr.in.progress'))) {
+  params <- load_params("resources/Heatmap", extra=TRUE)
+} else {
+  gt(data.frame(Setting=names(params),
+                Value=unlist(lapply(params, toString))))
+}
+
+counter <- (function(maxlen=3) {
+  n <- 0
+  function() {
+    n <<- n+1
+    sprintf(paste0("%0.", maxlen, "i"),n)
+  }
+})()
+
+meta_to_plot <- as.formula(params$plot_formula)
+#dat <- read_my_files(params)
+dat <- read_long_data(params, input_file=here::here(params$input_file))
+dat <- read_extra(dat, params, here=here())
+msg <- metadata(dat)$warnings
+
+mcols(colData(dat)) <- data.frame(PCA=FALSE)
+mcols(mcols(dat)) <- data.frame(PCA=FALSE)
+
+
+metadata(colData(dat))$palette <- df2colorspace(colData(dat), "Set1")
+metadata(rowData(dat))$palette <- df2colorspace(rowData(dat), "Set1")
+
+
+row_split <- ceiling(nrow(dat)/5)
+if (row_split<2) row_split <- NULL
+
+col_legends <- lapply(
+  names(metadata(colData(dat))$palette$Heatmap),
+  function(md_name) {
+    md <- metadata(colData(dat))$palette$Heatmap[[md_name]]
+    if (is.function(md))
+      Legend(col_fun=md, title=md_name)@grob
+    else
+      Legend(legend_gp=gpar(fill=md),labels=names(md), title=md_name)@grob
+  }
+)
+sane_legends <- col_legends[]
+do.call(grid.arrange, c(sane_legends, ncol=ceiling(sqrt(length(sane_legends)))))
+fig_caption("Sample metadata colour-codings")
+
+row_legends <- lapply(
+  names(metadata(rowData(dat))$palette$Heatmap),
+  function(md_name) {
+    md <- metadata(rowData(dat))$palette$Heatmap[[md_name]]
+    if (is.function(md))
+      Legend(row_fun=md, title=md_name)@grob
+    else
+      Legend(legend_gp=gpar(fill=md),labels=names(md), title=md_name)@grob
+  }
+)
+sane_legends <- row_legends
+do.call(grid.arrange, c(sane_legends, ncol=ceiling(sqrt(length(sane_legends)))))
+fig_caption("Feature metadata colour-codings")
+
+
+if (is.na(as.numeric(params$column_distance))) {
+  column_distance <- params$column_distance
+  column_distance_fn <- function(x) dist(x, method=column_distance)
+  if (!column_distance %in% c("euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski")) {
+    column_distance <- dist_fns[[column_distance]] # e.g. mahalanobis defined in R/transforms.R
+    column_distance_fn <- column_distance
+    }
+} else {
+  column_distance <- cts_as_binary(threshold=as.numeric(params$column_distance))
+  column_distance_fn <- column_distance
+}
+
+
+```
+
+`r msg`
+
+```{r}
+#| label: standardise
+
+if ("impute" %in% names(params)) {
+  assay(dat, "raw") <- impute_se(assay(dat,"raw"), params$"impute")
+}
+
+assay(dat, "standardised") <- t(scale(t(assay(dat, "raw")), center=TRUE, scale=TRUE))
+metadata(dat)$assay$standardised <- "Standardised"
+
+assay(dat, "log") <- log0_third(assay(dat, "raw"))
+metadata(dat)$assay$standardised <- "Log"
+
+assay(dat, "standardised-log") <- t(scale(t(assay(dat, "log")), center=TRUE, scale=TRUE))
+metadata(dat)$assay$standardised <- "Standardised Log"
+
+
+```
+
+
+# Entirely unsupervised clustering
+
+The charts in this section are purely empirical, in that although they 
+may annotate sample metadata  and feature
+metadata (which class of measurement it is) they aren't built into the
+clustering in any way. The sample clustering depends on what features
+we're using, so we start off using all the features to get as global a
+view as possible, then we zoom in on certain empirically associated
+features to see if they're detecting different sample-wise patterns.
+
+There are (at least) two systematically different ways of measuring
+the distance between two features: we can emphasise the _absolute_
+values being the same (so two features will deem that samples agree if
+they take the same percentages for those features), or the
+_relative_ values (so two features will deem that samples agree if
+e.g. they rank the samples the same but may not be in perfect
+calibration with each other). We'll explore both those possibilities
+
+## Absolute measures
+
+:::{.panel-tabset}
+
+### Sample-focussed
+
+```{r}
+#| label: fig-cluster-abs-samp
+#| output: asis
+  
+aname <-  params$assay
+
+if (is.character(params$column_split)) {
+  column_split <- as.formula(paste("~", params$column_split))
+} else {
+  column_split <- params$column_split
+}
+hmap <- se_heatmap(dat,
+                  assay=aname,
+                  model=meta_to_plot,
+                  show_row_names=TRUE,
+                  clustering_distance_rows="euclidean",
+                  clustering_distance_columns=column_distance,
+                  scale_to=FALSE,
+                  show_column_names=FALSE,
+                  layer_fun=function(...) grid.rect(gp = gpar(lwd = 2, fill = "transparent")),
+                  clustering_method_columns=params$clustering_method_columns,
+                  column_split = column_split)
+fig_caption("Entirely unsupervised, absolute with no normalisation")
+
+
+        
+my_hcut <- function(x, k=2, ...) {
+  dots <- list(...)
+  my_x <- dots$xx
+  hcut(x=my_x, k=k, ...)}
+
+nbclust <- fviz_nbclust(
+  t(assay(dat, aname)),
+  FUN=my_hcut,
+  method=c("silhouette"),
+  k.max=30,
+  nboot=20,
+  diss=column_distance_fn(t(assay(dat,aname))),
+  hc_func="hclust",
+  xx=column_distance_fn(t(assay(dat, aname)))
+)
+
+tmp <- cor(t(assay(dat, aname)))
+fac <- row.names(tmp)[row_order(hmap)]
+mat2df <- function(mat, order=row.names(mat)) {
+  data.frame( # it's symetric in dimnames so don't worry:
+    i = factor(row.names(mat)[c(row(mat))], levels=order),
+    j = factor(row.names(mat)[c(col(mat))], levels=order),
+    v = c(mat)
+  )
+}
+
+se_correlogram <- function(se, split=NULL, assay=1) {
+  dfs <- list()
+  dfs$all <- mat2df(cor(t(assay(se, assay))))
+  if (!is.null(split)) {
+    dfs[[paste0("-",split)]] <- mat2df(cor(residuals(
+      lm(t(assay(se,assay)) ~ colData(se)[[split]])
+    )))
+    tmps <- tapply(
+      1:ncol(se),
+      se[[split]],
+      function(samps) cor(t(assay(se[,samps], assay)))
+    )
+    dfs <- c(dfs, lapply(tmps, mat2df))
+  }
+  df <- do.call(
+    rbind,
+    mapply(function(x,i) {x$stratum=i;x}, dfs, names(dfs), SIMPLIFY=FALSE)
+  )
+  df$stratum <- factor(df$stratum, levels=names(dfs))
+  ggplot(df, aes(x=i, y=j)) +
+    geom_tile(aes(fill=v)) +
+    colorspace::scale_fill_continuous_diverging("Blue-Red 3", limits=c(-1,1)) +
+    labs(x=NULL, y=NULL, fill="Corr.") +
+    {if (!is.null(split)) facet_wrap(~stratum, scales="free")}
+}
+
+print(se_correlogram(dat, assay=aname))
+fig_caption("Correlogram")
+
+
+
+print(nbclust)
+fig_caption("Sample cluster silhouette")
+
+sort_clusts <- function(clustList) {
+  if (is.list(clustList)) {
+    out <- clustList[order(sapply(clustList, length))]
+    #fixed_length_int <- paste0("%0.", floor(log10(length(clustList)))+1, "i")
+    setNames(out, as.character(seq(along=clustList)))
+  } else {
+    list()
+  }
+}
+sub_clusts <- sort_clusts(column_order(hmap))
+clust_id <- rep(NA, nrow(dat))
+for (i in names(sub_clusts)) {
+  clust_id[sub_clusts[[i]]] <- i
+}
+tmp <- table(clust_id, dat$SUBJECT_ACCESSION)
+subject_cluster <- apply(tmp, 2, which.max)
+subject_frame <- data.frame(SUBJECT_ACCESSION=names(subject_cluster),
+                            cytokine_cluster=unname(subject_cluster)
+                            )
+#write_csv(subject_frame,
+#            file="cytokine_clusters.csv")
+
+
+cluster_to_col <- function(se, sub_clusts) {
+  df <- cbind(ID=colnames(se), cluster="", colData(se)[!mcols(colData(se))$PCA])
+  df$cluster[unlist(sub_clusts)] <- rep(names(sub_clusts), sapply(sub_clusts, length))
+  data.frame(df, check.names=FALSE)
+}
+
+lname <- knitr::fig_path(suffix="output.csv", number=counter())
+write.csv(cluster_to_col(dat, sub_clusts), file=link2path(lname))
+cat("\n\n [Download clusters as a csv](", lname, ")\n\n", sep="")
+
+for (i in names(sub_clusts)) {
+  se_heatmap(dat[,sub_clusts[[i]]],
+             assay=aname,
+             model=meta_to_plot,
+             show_row_names=TRUE,
+             clustering_distance_rows="euclidean",
+             clustering_distance_columns=column_distance,
+             scale_to=FALSE,
+             show_column_names=FALSE,
+             clustering_method_columns=params$clustering_method_columns,
+             max_legend_levels=5
+             )
+  fig_caption(paste("Sample subgroup ", i, " of above"))
+}
+
+```
+
+### Feature-focussed
+
+```{r}
+#| label: fig-cluster-abs-feat
+#| output: asis
+
+hmap <- se_heatmap(dat,
+                  assay=aname,
+                  model=meta_to_plot,
+                  show_row_names=TRUE,
+                  clustering_distance_rows="euclidean",
+                  clustering_distance_columns=column_distance,
+                  clustering_method_columns=params$clustering_method_columns,
+                  scale_to=FALSE,
+                  show_column_names=FALSE,
+                  max_legend_levels=5,
+                  layer_fun=function(...) grid.rect(gp = gpar(lwd = 2, fill = "transparent")),
+                  row_split=row_split
+                  )
+fig_caption("Entirely unsupervised, absolute with no normalisation")
+
+sub_clusts <- sort_clusts(row_order(hmap))
+for (i in names(sub_clusts)) {
+  se_heatmap(dat[sub_clusts[[i]],],
+             assay=aname,
+             model=meta_to_plot,
+             show_row_names=TRUE,
+             clustering_distance_rows="euclidean",
+             clustering_distance_columns=column_distance,
+             clustering_method_columns=params$clustering_method_columns,
+             scale_to=FALSE,
+             show_column_names=FALSE,
+             max_legend_levels=5
+             )
+  fig_caption(paste("Feature subgroup ", i, " of above"))
+}
+
+```
+
+:::
+
+
+## Relative  measures
+
+:::{.panel-tabset}
+### Sample-focussed
+
+
+```{r}
+#| label: fig-cluster-rel-samp
+#| results: 'asis'
+
+
+hmap <- se_heatmap(dat,
+                  assay=aname,
+                  model=meta_to_plot,
+                  show_row_names=TRUE,
+                  clustering_distance_rows="spearman",
+                  clustering_distance_columns=column_distance,
+                  clustering_method_columns=params$clustering_method_columns,
+                  scale_to=FALSE,
+                  show_column_names=FALSE,
+                  max_legend_levels=5,
+                  layer_fun=function(...) grid.rect(gp = gpar(lwd = 2, fill = "transparent")),
+                  column_split = column_split)
+
+fig_caption("Entirely unsupervised, relative with no normalisation")
+
+
+sub_clusts <- sort_clusts(column_order(hmap))
+
+lname <- knitr::fig_path(suffix="output.csv", number=counter())
+write.csv(cluster_to_col(dat, sub_clusts), file=link2path(lname))
+cat("\n\n [Download clusters as a csv](", lname, ")\n\n", sep="")
+
+for (i in names(sub_clusts)) {
+  se_heatmap(dat[,sub_clusts[[i]]],
+             assay=aname,
+             model=meta_to_plot,
+             show_row_names=TRUE,
+             clustering_distance_rows="spearman",
+             clustering_distance_columns=column_distance,
+             clustering_method_columns=params$clustering_method_columns,
+             scale_to=FALSE,
+             show_column_names=FALSE,
+             max_legend_levels=5
+             )
+  fig_caption(paste("Sample subgroup ", i, " of above"))
+}
+
+```
+
+### Feature-focussed
+
+```{r}
+#| label: fig-cluster-rel-feat
+#| results: 'asis'
+
+hmap <- se_heatmap(dat,
+                  assay=aname,
+                  model=meta_to_plot,
+                  show_row_names=TRUE,
+                  clustering_distance_rows="spearman",
+                  clustering_distance_columns=column_distance,
+                  clustering_method_columns=params$clustering_method_columns,
+                  scale_to=FALSE,
+                  show_column_names=FALSE,
+                  max_legend_levels=5,
+                  layer_fun=function(...) grid.rect(gp = gpar(lwd = 2, fill = "transparent")),
+                  row_split=row_split
+                  )
+
+fig_caption("Entirely unsupervised, relative with no normalisation")
+
+
+sub_clusts <- sort_clusts(row_order(hmap))
+for (i in names(sub_clusts)) {
+  se_heatmap(dat[sub_clusts[[i]],],
+             assay=aname,
+             model=meta_to_plot,
+             show_row_names=TRUE,
+             clustering_distance_rows="spearman",
+             clustering_distance_columns=column_distance,
+             clustering_method_columns=params$clustering_method_columns,
+             scale_to=FALSE,
+             show_column_names=FALSE,
+             max_legend_levels=5
+             )
+  fig_caption(paste("Feature subgroup ", i, " of above"))
+}
+
+```
+
+:::
+
+
+```{r}
+#| label: dummy
+#| results: 'hide'
+#| echo: false
+#| message: false
+
+# This trivial cached chunk  means that the images folder doesn't get deleted,
+# allowing us to link to the pdfs. 
+# See https://bookdown.org/yihui/rmarkdown-cookbook/keep-files.html#keep-files
+# `self_contained=FALSE` tends to break the css
+# PS doesn't always seem to work, so I've reverted to keep_md=TRUE
+# and removing it as part of the post-processing.
+```
+
+# Terms Of Use
+yes
+
+# Bibliography
+
+

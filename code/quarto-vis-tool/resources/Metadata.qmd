@@ -1,0 +1,135 @@
+---
+title: Metadata
+description: Overview
+author: 
+  - name: Gavin Kelly
+    affiliations: BABS - Francis Crick Institute
+format:
+  html:
+    theme: cerulean
+    fontsize: 1.1em
+    linestretch: 1.7
+code-fold: true
+echo: false
+code-summary: "Show the code"
+categories: [Metadata]
+params:
+---
+  
+
+# Introduction
+
+Load the data into a SummarizedExperiment which contains a matrix with
+row and column annotation frames.
+
+
+```{r}
+#| label: intro
+#| results: 'hide'
+#| echo: false
+#| message: false
+
+library(tidyverse)
+library(Hmisc)
+library(emmeans)
+library(ragg)
+library(SummarizedExperiment)
+library(ComplexHeatmap)
+library(gt)
+library(nlme)
+library(openxlsx)
+library(factoextra)
+library(gridExtra)
+library(compositions)
+```
+
+We're using the following settings:
+
+```{r}
+#| label: load
+source("R/markdown.r", local = knitr::knit_global())
+source("R/transforms.r", local = knitr::knit_global())
+source("R/plot.r", local = knitr::knit_global())
+source("R/output.r", local = knitr::knit_global())
+source("R/input.r", local = knitr::knit_global())
+fig_caption <- captioner()
+set.seed(1)
+
+knitr::opts_chunk$set(warning=FALSE, error=FALSE, message=FALSE,
+                      dev=c("ragg_png","pdf"), out.width="100%",
+                      fig.width=14, fig.height=10,
+                      results='asis'
+                      )
+```
+
+
+```{r}
+#| label: load2
+if (!isTRUE(getOption('knitr.in.progress'))) {
+  params <- load_params("resources/Metadata", extra=TRUE)
+} else {
+  gt(data.frame(Setting=names(params),
+                Value=unlist(params)))
+}
+
+
+dat <- read_my_files(params)
+msg <- metadata(dat)$warnings
+
+mcols(colData(dat)) <- data.frame(PCA=FALSE)
+mcols(mcols(dat)) <- data.frame(PCA=FALSE)
+
+metadata(colData(dat))$palette <- df2colorspace(colData(dat), "Set1")
+metadata(rowData(dat))$palette <- df2colorspace(rowData(dat), "Set1")
+
+
+```
+
+`r msg`
+
+```{r}
+#| label: standardise
+
+assay(dat, "standardised") <- t(scale(t(assay(dat, "raw")), center=TRUE, scale=TRUE))
+metadata(dat)$assay$standardised <- "Standardised"
+
+```
+
+# Descriptive and visual summaries
+
+Below, we summarise the observed values of our metadata. For
+qualitative data, we show observed frequencies (in a table, when the
+number of distinct values is moderate, otherwise in text form), along
+with some stats on missingness.  For quantitative data, we show means,
+some convenient quantiles (median is the 0.5 quantile). More
+esoterically,  _Info_ is a measure of the likely impact of
+observed ties/duplicates  - the lower the _Info_, the less efficient
+any subsequent (non-parametric) tests are expected to be.  And _Gmd_
+is a measure of variability that works well for far-from-normal data.
+
+```{r}
+#| label: metadata
+#| fig-cap: ""
+#| output: asis
+Hmisc::html(Hmisc::describe(data.frame(colData(dat), check.names=FALSE)))
+
+```
+ 
+## Assay data
+
+And now the same for the assay data:
+
+```{r}
+#| label: assaydata
+#| fig-cap: ""
+#| output: asis
+Hmisc::html(Hmisc::describe(data.frame(t(assay(dat, "raw")), check.names=FALSE)))
+
+```
+
+
+# Terms Of Use
+
+# Bibliography
+
+
