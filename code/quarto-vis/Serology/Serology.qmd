@@ -175,7 +175,18 @@ output$plot3 <- create_plot_pneumo(input, "covar2", sero_SDY180_p)
 ## Bayesian hierarchical antibody kinetic model fits
 ```{r}
 
-img <- readPNG(here("results/covariate_level/boost_cluster_fits.png"))
-grid::grid.raster(img)
+img_1 <- readPNG(here("results/covariate_level/covariate_titre_fits.png"))
+grid::grid.raster(img_1)
 
+img_2 <- readPNG(here("results/covariate_level/covariate_cluster_fits.png"))
+grid::grid.raster(img_2)
+
+img_3 <- readPNG(here("results/covariate_level/boost_titre_fits.png"))
+grid::grid.raster(img_3)
+
+img_4 <- readPNG(here("results/covariate_level/boost_cluster_fits.png"))
+grid::grid.raster(img_4)
+
+img_5 <- readPNG(here("results/individual_level/boost_titre_fits.png"))
+grid::grid.raster(img_5)
 ```
