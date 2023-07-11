@@ -8,18 +8,18 @@ VizImmune: an open-source platform to harness the scientific public health poten
 
 * First, it helps in disease surveillance and outbreak detection, as immunological biomarker data allows health authorities to identify the presence of infectious diseases, track their spread, and implement timely interventions such as quarantine measures of targeted vaccination campaigns
 
-*Second, these data can aid in assessing the effectiveness of public health interventions, such as vaccination programmes, evaluate their impact and make evidence-based decisions regarding future strategies. 
-*Finally, immunological biomarker data plays a crucial role in vaccine development and monitoring; it helps researchers understand the immune response to different vaccines, identify correlates of protection and identify surrogate endpoints to help supplement long and expensive clinical trials. 
+* Second, these data can aid in assessing the effectiveness of public health interventions, such as vaccination programmes, evaluate their impact and make evidence-based decisions regarding future strategies. 
+
+* Finally, immunological biomarker data plays a crucial role in vaccine development and monitoring; it helps researchers understand the immune response to different vaccines, identify correlates of protection and identify surrogate endpoints to help supplement long and expensive clinical trials. 
 
 
 ### Built With
 
-* [![Stan][Stan]][https://mc-stan.org/]
-* [![R][R]][https://www.r-project.org/]
-* [![Shiny][Shiny]][https://shiny.posit.co/]
-* [![Quarto][Quarto]][https://quarto.org/]
+* [Stan](https://mc-stan.org/)
+* [R](https://www.r-project.org/)
+* [Shiny](https://shiny.posit.co/)
+* [Quarto](https://quarto.org/)
 
-<!-- GETTING STARTED -->
 ## Getting Started
 
 This is an example of how you may give instructions on setting up your project locally.
