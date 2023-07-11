@@ -1,4 +1,4 @@
-VizImmune: a platform for visualising in-host immune kinetics.
+# VizImmune: a platform for visualising in-host immune kinetics.
 
 ## About The Project
 
