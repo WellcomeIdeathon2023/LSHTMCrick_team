@@ -2,7 +2,7 @@ VizImmune: a platform for visualising in-host immune kinetics.
 
 ## About The Project
 
-![plot](https://github.com/WellcomeIdeathon2023/LSHTMCrick_team/tree/main/results/vizimmune_screenshot.png)
+![Screenshot](results/vizimmune_screenshot.png)
 
 VizImmune: an open-source platform to harness the scientific public health potential of immunological biomarker data. Immunological biomarkers are measurable indicators of the immune system’s response to various diseases, infections and vaccination. By systematically collecting and analysing these data, public health officials can gain a deeper understanding of the epidemiology of infectious diseases on the individual and population level in several ways:
 
